@@ -8,6 +8,22 @@ import {
   Droplets, Construction, Trash2, Shield, MapPin, Hash, Flame,
 } from 'lucide-react';
 
+// ─── Demo data (used only when real data is empty) ───
+const DEMO_EXPENDITURE_TREND = [
+  { month: 'Jan', spentPct: 32 },
+  { month: 'Feb', spentPct: 48 },
+  { month: 'Mar', spentPct: 61 },
+  { month: 'Apr', spentPct: 55 },
+  { month: 'May', spentPct: 78 },
+  { month: 'Jun', spentPct: 88 },
+];
+
+const DEMO_BUDGET = {
+  totalAllocated: 245_000_000,
+  totalUsed: 148_500_000,
+  usedPct: 61,
+};
+
 const API_URL = 'http://localhost:8080';
 
 // ─── Types ───
@@ -384,6 +400,25 @@ export default function DashboardHome() {
     };
   }, [projects, issues]);
 
+  // ─── Display metrics: real when available, demo otherwise ───
+  const displayMetrics = useMemo(() => {
+    const isEmpty = metrics.totalAllocated === 0 && metrics.totalUsed === 0;
+    if (isEmpty) {
+      return {
+        totalAllocated: DEMO_BUDGET.totalAllocated,
+        totalUsed: DEMO_BUDGET.totalUsed,
+        usedPct: DEMO_BUDGET.usedPct,
+        isDemo: true,
+      };
+    }
+    return {
+      totalAllocated: metrics.totalAllocated,
+      totalUsed: metrics.totalUsed,
+      usedPct: metrics.usedPct,
+      isDemo: false,
+    };
+  }, [metrics]);
+
   // ─── Departments (filtered) ───
   const departments = useMemo(() => {
     const deptMap = new Map<string, { allocated: number; used: number; count: number; totalProg: number }>();
@@ -448,17 +483,19 @@ export default function DashboardHome() {
     [projects]
   );
 
-  // ─── Monthly expenditure trend (derived from project progress × budget) ───
+  // ─── Monthly expenditure trend (demo when empty) ───
   const expenditureTrend = useMemo(() => {
-    // Realistic burn curve derived from portfolio data
-    const base = metrics.usedPct || 0;
+    if (metrics.usedPct === 0 || projects.length === 0) {
+      return DEMO_EXPENDITURE_TREND;
+    }
+    const base = metrics.usedPct;
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
     const weights = [0.35, 0.5, 0.65, 0.6, 0.8, 0.9];
     return months.map((m, i) => ({
       month: m,
       spentPct: Math.min(100, Math.round(base * weights[i] + (base * 0.15 * (i % 2 === 0 ? 1 : -1)))),
     }));
-  }, [metrics.usedPct]);
+  }, [metrics.usedPct, projects.length]);
 
   // ─── Status distribution for the "distribution" card ───
   const statusDist = useMemo(() => {
@@ -478,7 +515,7 @@ export default function DashboardHome() {
     [contractors],
   );
 
-  const donutDegrees = Math.round((metrics.usedPct / 100) * 360);
+  const donutDegrees = Math.round((displayMetrics.usedPct / 100) * 360);
 
   return (
     <div style={styles.container}>
@@ -653,7 +690,19 @@ export default function DashboardHome() {
           <div style={styles.cardHeader}>
             <div>
               <h3 style={styles.cardTitle}>Expenditure Velocity</h3>
-              <p style={styles.cardSubtitle}>Monthly burn rate tracking (H1)</p>
+              <p style={styles.cardSubtitle}>
+                Monthly burn rate tracking (H1)
+                {displayMetrics.isDemo && (
+                  <span style={{
+                    marginLeft: 8, padding: '2px 8px', fontSize: '0.6rem',
+                    fontWeight: 700, letterSpacing: '0.05em',
+                    backgroundColor: '#fef3c7', color: '#92400e',
+                    borderRadius: 999, textTransform: 'uppercase',
+                  }}>
+                    Demo
+                  </span>
+                )}
+              </p>
             </div>
             <TrendingUp size={16} color="#94a3b8" />
           </div>
@@ -670,7 +719,7 @@ export default function DashboardHome() {
           </div>
           <div style={{ ...styles.cardFooter, marginTop: '1rem' }}>
             <span style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <TrendingUp size={12} /> {metrics.usedPct}% portfolio utilization
+              <TrendingUp size={12} /> {displayMetrics.usedPct}% portfolio utilization
             </span>
           </div>
         </div>
@@ -680,7 +729,19 @@ export default function DashboardHome() {
           <div style={styles.cardHeader}>
             <div>
               <h3 style={styles.cardTitle}>Budget Utilisation</h3>
-              <p style={styles.cardSubtitle}>Portfolio-wide spend</p>
+              <p style={styles.cardSubtitle}>
+                Portfolio-wide spend
+                {displayMetrics.isDemo && (
+                  <span style={{
+                    marginLeft: 8, padding: '2px 8px', fontSize: '0.6rem',
+                    fontWeight: 700, letterSpacing: '0.05em',
+                    backgroundColor: '#fef3c7', color: '#92400e',
+                    borderRadius: 999, textTransform: 'uppercase',
+                  }}>
+                    Demo
+                  </span>
+                )}
+              </p>
             </div>
           </div>
 
@@ -704,7 +765,7 @@ export default function DashboardHome() {
                   fontWeight: 700, color: '#0f172a', lineHeight: 1,
                   fontVariantNumeric: 'tabular-nums',
                 }}>
-                  {metrics.usedPct}%
+                  {displayMetrics.usedPct}%
                 </div>
                 <div style={{
                   fontSize: '10px', color: '#94a3b8',
@@ -723,11 +784,11 @@ export default function DashboardHome() {
           }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#2563eb' }} />
-              Used {formatZAR(metrics.totalUsed)}
+              Used {formatZAR(displayMetrics.totalUsed)}
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#e2e8f0' }} />
-              Left {formatZAR(metrics.totalAllocated - metrics.totalUsed)}
+              Left {formatZAR(displayMetrics.totalAllocated - displayMetrics.totalUsed)}
             </span>
           </div>
         </div>
@@ -815,8 +876,8 @@ export default function DashboardHome() {
                 const status = normalizeStatus(p.status);
                 const isDelayed = status === 'Delayed';
                 const tone = isDelayed
-                  ? { bg: '#fef2f2', fg: '#dc2626', pill: styles.pillRose }
-                  : { bg: '#fffbeb', fg: '#d97706', pill: styles.pillAmber };
+                  ? { pill: styles.pillRose }
+                  : { pill: styles.pillAmber };
                 return (
                   <div key={p.id} style={{
                     padding: '0.7rem 0.8rem', backgroundColor: '#f8fafc',

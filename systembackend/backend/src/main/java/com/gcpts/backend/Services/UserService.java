@@ -51,4 +51,27 @@ public class UserService {
     public boolean authenticateUser(String email, String rawPassword) {
         return authenticate(email, rawPassword).isPresent();
     }
+
+    // ═══════════════════════════════════════════════
+    //  Methods used by PushController
+    // ═══════════════════════════════════════════════
+    public Optional<User> findById(Long id) {
+        return userRepository.findById(id);
+    }
+
+    public User save(User user) {
+        return userRepository.save(user);
+    }
+
+    // ═══════════════════════════════════════════════
+    //  Methods used by PasswordResetController
+    // ═══════════════════════════════════════════════
+    public Optional<User> findByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+
+    public User updatePassword(User user, String newRawPassword) {
+        user.setPassword(passwordEncoder.encode(newRawPassword));
+        return userRepository.save(user);
+    }
 }

@@ -2,6 +2,7 @@ package com.gcpts.backend.controller;
 
 import com.gcpts.backend.Services.AuditLogService;
 import com.gcpts.backend.Services.JwtService;
+import com.gcpts.backend.Services.NotificationService;
 import com.gcpts.backend.Services.UserService;
 import com.gcpts.backend.model.User;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,13 +21,16 @@ public class AuthController {
     private final UserService userService;
     private final JwtService jwtService;
     private final AuditLogService auditLogService;
+    private final NotificationService notificationService;
 
     public AuthController(UserService userService,
                           JwtService jwtService,
-                          AuditLogService auditLogService) {
+                          AuditLogService auditLogService,
+                          NotificationService notificationService) {
         this.userService = userService;
         this.jwtService = jwtService;
         this.auditLogService = auditLogService;
+        this.notificationService = notificationService;
     }
 
     // ─── REGISTER ───
@@ -58,6 +62,14 @@ public class AuthController {
                 userType
         );
 
+        // ⭐ NOTIFY EVERYONE
+        notificationService.broadcastToAll(
+                null,
+                "announcement",
+                "New user joined: " + created.getFullName(),
+                "Welcome to GCPTS!"
+        );
+
         auditLogService.success(
                 "USER_REGISTERED",
                 "Users",
@@ -78,7 +90,7 @@ public class AuthController {
                 created.getUserType()
         );
 
-        res.put("id",       created.getId());          // ⭐ ADDED
+        res.put("id",       created.getId());
         res.put("message",  "Registration successful!");
         res.put("token",    token);
         res.put("email",    created.getEmail());
@@ -138,7 +150,7 @@ public class AuthController {
                 httpReq
         );
 
-        res.put("id",       user.getId());             // ⭐ ADDED
+        res.put("id",       user.getId());
         res.put("message",  "Login successful!");
         res.put("token",    token);
         res.put("email",    user.getEmail());

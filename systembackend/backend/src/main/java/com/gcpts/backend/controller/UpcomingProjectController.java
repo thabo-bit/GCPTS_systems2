@@ -3,6 +3,7 @@ package com.gcpts.backend.controller;
 import com.gcpts.backend.model.UpcomingProject;
 import com.gcpts.backend.repository.UpcomingProjectRepository;
 import com.gcpts.backend.Services.AuditLogService;
+import com.gcpts.backend.Services.NotificationService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -28,17 +29,16 @@ public class UpcomingProjectController {
     @Autowired
     private AuditLogService auditLogService;
 
-    // ─────────────────────────────────────────────
-    // GET all
-    // ─────────────────────────────────────────────
+    @Autowired
+    private NotificationService notificationService;
+
+ 
     @GetMapping
     public List<UpcomingProject> getAll() {
         return repository.findAllByOrderByIdDesc();
     }
 
-    // ─────────────────────────────────────────────
-    // GET one
-    // ─────────────────────────────────────────────
+
     @GetMapping("/{id}")
     public ResponseEntity<UpcomingProject> getOne(@PathVariable Long id) {
         return repository.findById(id)
@@ -46,9 +46,7 @@ public class UpcomingProjectController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // ─────────────────────────────────────────────
-    // CREATE
-    // ─────────────────────────────────────────────
+ 
     @PostMapping(consumes = "multipart/form-data")
     public ResponseEntity<?> create(
             @RequestPart("project") Map<String, Object> payload,
@@ -75,7 +73,6 @@ public class UpcomingProjectController {
             p.setNgoRole(str(payload, "ngoRole"));
             p.setStageDescription(str(payload, "stageDescription"));
 
-            // NEW: status (falls back to "Waiting for Approval" via @PrePersist)
             String status = str(payload, "status");
             if (status != null && !status.isEmpty()) {
                 p.setStatus(status);
@@ -105,6 +102,14 @@ public class UpcomingProjectController {
             }
 
             UpcomingProject saved = repository.save(p);
+
+            // ⭐ NOTIFY EVERYONE
+            notificationService.broadcastToAll(
+                    saved.getId(),
+                    "announcement",
+                    "New upcoming project: " + saved.getTitle(),
+                    "Planned for " + saved.getLocation()
+            );
 
             // ─── Audit log ───
             Map<String, Object> snapshot = new HashMap<>();
@@ -179,7 +184,6 @@ public class UpcomingProjectController {
                 existing.setNgoRole(str(payload, "ngoRole"));
                 existing.setStageDescription(str(payload, "stageDescription"));
 
-                // Status update — only if provided
                 String newStatus = str(payload, "status");
                 if (newStatus != null && !newStatus.isEmpty()) {
                     existing.setStatus(newStatus);
@@ -208,6 +212,14 @@ public class UpcomingProjectController {
                 }
 
                 UpcomingProject saved = repository.save(existing);
+
+                // ⭐ NOTIFY EVERYONE
+                notificationService.broadcastToAll(
+                        saved.getId(),
+                        "update",
+                        "Upcoming project updated: " + saved.getTitle(),
+                        "Current status: " + saved.getStatus()
+                );
 
                 Map<String, Object> newSnapshot = new HashMap<>();
                 newSnapshot.put("title", saved.getTitle());
@@ -277,6 +289,14 @@ public class UpcomingProjectController {
             existing.setStatus(newStatus);
             UpcomingProject saved = repository.save(existing);
 
+            // ⭐ NOTIFY EVERYONE
+            notificationService.broadcastToAll(
+                    saved.getId(),
+                    "update",
+                    saved.getTitle() + " is now " + newStatus,
+                    "Upcoming project status changed."
+            );
+
             Map<String, Object> oldSnapshot = new HashMap<>();
             oldSnapshot.put("status", oldStatus);
 
@@ -289,7 +309,7 @@ public class UpcomingProjectController {
                     saved.getTitle(),
                     oldSnapshot,
                     newSnapshot,
-                    true, // status changes are sensitive
+                    true,
                     request
             );
 
@@ -320,12 +340,21 @@ public class UpcomingProjectController {
             snapshot.put("referenceNumber", p.getReferenceNumber());
             snapshot.put("status", p.getStatus());
 
+            String title = p.getTitle();
             repository.delete(p);
+
+            // ⭐ NOTIFY EVERYONE
+            notificationService.broadcastToAll(
+                    null,
+                    "announcement",
+                    "Upcoming project removed: " + title,
+                    "This planned project is no longer listed."
+            );
 
             auditLogService.success(
                     "UPCOMING_PROJECT_DELETED",
                     "UpcomingProjects",
-                    p.getTitle(),
+                    title,
                     snapshot,
                     null,
                     true,

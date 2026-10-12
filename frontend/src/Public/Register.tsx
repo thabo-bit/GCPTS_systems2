@@ -1,7 +1,7 @@
 // src/Public/Register.tsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Phone, Lock, Eye, EyeOff, Shield } from 'lucide-react';
+import { User, Mail, Phone, Lock, Eye, EyeOff } from 'lucide-react';
 import '../Components/Register.css';
 import { useAuth } from '../AuthContext';
 
@@ -13,10 +13,12 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
-  const [userType, setUserType] = useState<'user' | 'admin'>('user');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // 🔒 Fixed role — always registers as a community member
+  const USER_TYPE = 'user' as const;
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +29,13 @@ export default function RegisterPage() {
       const response = await fetch('http://localhost:8080/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName, email, mobile, password, userType }),
+        body: JSON.stringify({
+          fullName,
+          email,
+          mobile,
+          password,
+          userType: USER_TYPE,
+        }),
       });
 
       const text = await response.text();
@@ -39,13 +47,16 @@ export default function RegisterPage() {
 
       if (data.token) {
         login({
+          id: data.id,
           email: data.email || email,
           fullName: data.fullName || fullName,
-          userType: data.userType || userType,
+          userType: data.userType || USER_TYPE,
           token: data.token,
         });
 
-        navigate(data.userType === 'admin' ? '/Admin' : '/Dashboard');
+        // Since only community members can self-register,
+        // always send them to the citizen dashboard.
+        navigate('/Dashboard');
       } else {
         navigate('/login');
       }
@@ -88,14 +99,19 @@ export default function RegisterPage() {
           </div>
 
           {error && (
-            <div className="error-message" style={{ color: '#ff4d4f', marginBottom: '1rem', fontSize: '0.875rem' }}>
+            <div
+              className="error-message"
+              style={{ color: '#ff4d4f', marginBottom: '1rem', fontSize: '0.875rem' }}
+            >
               {error}
             </div>
           )}
 
           <form onSubmit={handleRegister} className="auth-form">
             <div className="input-group">
-              <span className="input-icon"><User size={18} /></span>
+              <span className="input-icon">
+                <User size={18} />
+              </span>
               <input
                 type="text"
                 placeholder="Full Name"
@@ -106,7 +122,9 @@ export default function RegisterPage() {
             </div>
 
             <div className="input-group">
-              <span className="input-icon"><Mail size={18} /></span>
+              <span className="input-icon">
+                <Mail size={18} />
+              </span>
               <input
                 type="email"
                 placeholder="Email Address"
@@ -117,7 +135,9 @@ export default function RegisterPage() {
             </div>
 
             <div className="input-group">
-              <span className="input-icon"><Phone size={18} /></span>
+              <span className="input-icon">
+                <Phone size={18} />
+              </span>
               <input
                 type="text"
                 placeholder="Mobile Number (e.g. 0821234567)"
@@ -128,7 +148,9 @@ export default function RegisterPage() {
             </div>
 
             <div className="input-group password-group">
-              <span className="input-icon"><Lock size={18} /></span>
+              <span className="input-icon">
+                <Lock size={18} />
+              </span>
               <input
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Create Password"
@@ -145,27 +167,7 @@ export default function RegisterPage() {
               </button>
             </div>
 
-            {/* Account type selector */}
-            <div className="input-group">
-              <span className="input-icon"><Shield size={18} /></span>
-              <select
-                value={userType}
-                onChange={(e) => setUserType(e.target.value as 'user' | 'admin')}
-                style={{
-                  flex: 1,
-                  border: 'none',
-                  background: 'transparent',
-                  outline: 'none',
-                  fontSize: '0.95rem',
-                  fontFamily: 'inherit',
-                  color: '#1f2233',
-                  cursor: 'pointer',
-                }}
-              >
-                <option value="user">Community Member</option>
-                <option value="admin">Government Administrator</option>
-              </select>
-            </div>
+
 
             <button type="submit" className="primary-signin-btn" disabled={loading}>
               {loading ? 'Processing...' : 'Complete Registration'}

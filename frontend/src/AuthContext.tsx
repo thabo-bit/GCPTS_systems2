@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 export interface AuthUser {
+  id: number;                        // ⭐ ADDED — required for notifications
   email: string;
   fullName: string;
   userType: 'admin' | 'user';
@@ -12,7 +13,7 @@ interface AuthContextType {
   user: AuthUser | null;
   isLoggedIn: boolean;
   isAdmin: boolean;
-  isReady: boolean;               // ← added — used by RequireAuth
+  isReady: boolean;
   login: (data: AuthUser) => void;
   logout: () => void;
 }
@@ -36,17 +37,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       try {
-        setUser(JSON.parse(raw));
+        const parsed = JSON.parse(raw);
+        // 🔒 Backwards-compat: if old data had no id, log them out so they re-login
+        if (parsed && typeof parsed.id === 'number') {
+          setUser(parsed);
+        } else {
+          localStorage.removeItem(STORAGE_KEY);
+        }
       } catch {
         localStorage.removeItem(STORAGE_KEY);
       }
     }
-    setIsReady(true);   // mark hydration done
+    setIsReady(true);
   }, []);
 
   const login = (data: AuthUser) => {
-    setUser(data);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    const authData: AuthUser = {
+      id: data.id,                   // ⭐ CRITICAL — flows through from LoginPage
+      email: data.email,
+      fullName: data.fullName,
+      userType: data.userType,
+      token: data.token,
+    };
+    setUser(authData);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(authData));
   };
 
   const logout = () => {

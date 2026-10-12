@@ -1,11 +1,13 @@
 package com.gcpts.backend;
-//first
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.EnableAsync;   // ⭐ ADD THIS
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 @SpringBootApplication
+@EnableAsync                                                   // ⭐ ADD THIS
 public class BackendApplication {
 
     public static void main(String[] args) {
@@ -16,5 +18,4 @@ public class BackendApplication {
     public BCryptPasswordEncoder bCryptPasswordEncoder() {
         return new BCryptPasswordEncoder();
     }
-
 }

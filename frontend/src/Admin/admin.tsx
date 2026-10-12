@@ -4,21 +4,20 @@ import { useNavigate } from 'react-router-dom';
 import {
   PlusCircle,
   FolderKanban,
-  CalendarPlus,
   Clock,
   Wallet,
   Coins,
   Search,
   ChevronLeft,
   ArrowLeft,
-  LogOut,
+  LayoutDashboard,
   Shield,
   AlertCircle,
+  LogOut,
 } from 'lucide-react';
 import CreateProject from '../Components/CreateProject';
 import EditProject from '../Components/EditsProjects';
 import ProjectsList from '../Components/ProjectsList';
-import CreateUpcomingProject from '../Components/CreateUpcomingProject';
 import PendingApprovals from '../Components/PendingApprovals';
 import BudgetAllocation from '../Components/BudgetAllocation';
 import FundingUsageAdmin from '../Components/FundingUsageAdmin';
@@ -26,6 +25,9 @@ import AuditLogsModule from '../Components/AuditLogs';
 import AdminIssuesModule from '../Components/AdminIssuesModule';
 import type { Project as ProjectType } from '../Components/ProjectsList';
 import { useAuth } from '../AuthContext';
+
+// 👇 Adjust this path to wherever your logo file actually lives
+import logo from '../assets/coat_of_arms_of_south_africa_1.png';
 
 interface NavItem {
   name: string;
@@ -54,11 +56,12 @@ function getRoleLabel(userType?: string): string {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   const [activeNav, setActiveNav] = useState<string>('Create Project');
   const [editingProject, setEditingProject] = useState<ProjectType | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
+  const [logoError, setLogoError] = useState<boolean>(false);
 
   // ─── Derived user display values ───
   const displayName = user?.fullName || 'Admin User';
@@ -66,10 +69,10 @@ export default function AdminDashboard() {
   const displayRole = getRoleLabel(user?.userType);
   const initials = getInitials(user?.fullName, user?.email);
 
+  // 👇 Upcoming Projects entry removed
   const navItems: NavItem[] = [
     { name: 'Create Project',    icon: PlusCircle },
     { name: 'Projects',          icon: FolderKanban },
-    { name: 'Upcoming Projects', icon: CalendarPlus },
     { name: 'Pending Approvals', icon: Clock },
     { name: 'Budgets',           icon: Wallet },
     { name: 'Issues',            icon: AlertCircle },
@@ -92,32 +95,23 @@ export default function AdminDashboard() {
     setActiveNav('Projects');
   };
 
-  const handleUpcomingSuccess = () => {
-    setActiveNav('Upcoming Projects');
-  };
-
   const handleCancel = () => {
     setEditingProject(null);
     setActiveNav('Create Project');
   };
 
+  // ─── Navigate to main dashboard ───
+  const handleGoToDashboard = () => {
+    navigate('/dashboard');
+  };
+
   // ─── Logout handler ───
   const handleLogout = () => {
-    const confirmed = window.confirm('Are you sure you want to log out?');
-    if (!confirmed) return;
-
-    // Clear auth context (this typically clears localStorage too)
-    logout();
-
-    // Belt-and-braces: wipe any persisted keys directly
-    localStorage.removeItem('token');
-    localStorage.removeItem('email');
-    localStorage.removeItem('fullName');
-    localStorage.removeItem('userType');
-    localStorage.removeItem('userId');
-
-    // Redirect to login
-    navigate('/login', { replace: true });
+    // Clear any auth state / tokens here, e.g.:
+    // localStorage.removeItem('token');
+    // sessionStorage.clear();
+    // logout(); // if your useAuth() exposes a logout function
+    navigate('/login');
   };
 
   const renderActiveModule = () => {
@@ -139,14 +133,6 @@ export default function AdminDashboard() {
           <ProjectsList
             onCreateNew={handleCreateNew}
             onEditProject={handleEditProject}
-          />
-        );
-
-      case 'Upcoming Projects':
-        return (
-          <CreateUpcomingProject
-            onSuccess={handleUpcomingSuccess}
-            onCancel={() => setActiveNav('Create Project')}
           />
         );
 
@@ -177,7 +163,6 @@ export default function AdminDashboard() {
       case 'Create Project':    return 'Create New Project';
       case 'Edit Project':      return `Edit: ${editingProject?.title || 'Project'}`;
       case 'Projects':          return 'Projects';
-      case 'Upcoming Projects': return 'Add Upcoming Project';
       case 'Pending Approvals': return 'Pending Approvals';
       case 'Budgets':           return 'Budget Allocation';
       case 'Funding Usage':     return 'Funding Usage';
@@ -212,6 +197,7 @@ export default function AdminDashboard() {
         }}
       >
         <div>
+          {/* ─── Brand / logo block ─── */}
           <div
             style={{
               padding: sidebarCollapsed ? '20px 12px' : '20px 20px 16px 20px',
@@ -234,9 +220,25 @@ export default function AdminDashboard() {
                 color: '#10b981',
                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
                 flexShrink: 0,
+                overflow: 'hidden',
               }}
             >
-              <CoatOfArmsIcon />
+              {logoError ? (
+                <CoatOfArmsIcon />
+              ) : (
+                <img
+                  src={logo}
+                  alt="GCPTS logo"
+                  onError={() => setLogoError(true)}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                    padding: '6px',
+                    display: 'block',
+                  }}
+                />
+              )}
             </div>
             {!sidebarCollapsed && (
               <div>
@@ -335,11 +337,10 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* ─── Bottom: logged-in user + logout ─── */}
+        {/* ─── Bottom: logged-in user + dashboard/logout buttons ─── */}
         <div style={{ padding: '12px', borderTop: '1px solid #16223b' }}>
           {!sidebarCollapsed ? (
             <>
-              {/* Expanded card: avatar + name + email + role + logout icon */}
               <div
                 style={{
                   display: 'flex',
@@ -412,73 +413,87 @@ export default function AdminDashboard() {
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Action buttons: Go to Dashboard + Logout */}
+              <div
+                style={{
+                  marginTop: '8px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px',
+                }}
+              >
                 <button
-                  onClick={handleLogout}
-                  title="Log out"
+                  onClick={handleGoToDashboard}
                   style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: '#94a3b8',
-                    cursor: 'pointer',
-                    padding: '6px',
-                    borderRadius: '6px',
+                    width: '100%',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    flexShrink: 0,
+                    gap: '8px',
+                    padding: '9px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #16223b',
+                    backgroundColor: 'transparent',
+                    color: '#94a3b8',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
                     transition: 'all 0.15s ease',
+                    fontFamily: 'inherit',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.12)';
+                    e.currentTarget.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
+                    e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+                    e.currentTarget.style.color = '#10b981';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.borderColor = '#16223b';
+                    e.currentTarget.style.color = '#94a3b8';
+                  }}
+                >
+                  <LayoutDashboard size={14} />
+                  Go to Dashboard
+                </button>
+
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    padding: '9px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #16223b',
+                    backgroundColor: 'transparent',
+                    color: '#94a3b8',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    fontFamily: 'inherit',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                    e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.4)';
                     e.currentTarget.style.color = '#ef4444';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.borderColor = '#16223b';
                     e.currentTarget.style.color = '#94a3b8';
                   }}
                 >
-                  <LogOut size={15} />
+                  <LogOut size={14} />
+                  Logout
                 </button>
               </div>
-
-              {/* Full-width logout button below the card */}
-              <button
-                onClick={handleLogout}
-                style={{
-                  marginTop: '8px',
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  padding: '9px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid #16223b',
-                  backgroundColor: 'transparent',
-                  color: '#94a3b8',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  fontFamily: 'inherit',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
-                  e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.4)';
-                  e.currentTarget.style.color = '#ef4444';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.borderColor = '#16223b';
-                  e.currentTarget.style.color = '#94a3b8';
-                }}
-              >
-                <LogOut size={14} />
-                Log out
-              </button>
             </>
           ) : (
-            // Collapsed state: avatar-only + logout icon
             <div
               style={{
                 display: 'flex',
@@ -505,9 +520,39 @@ export default function AdminDashboard() {
               >
                 {initials}
               </div>
+
+              <button
+                onClick={handleGoToDashboard}
+                title="Go to Dashboard"
+                style={{
+                  background: 'transparent',
+                  border: '1px solid #16223b',
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  padding: '6px',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+                  e.currentTarget.style.color = '#10b981';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.borderColor = '#16223b';
+                  e.currentTarget.style.color = '#94a3b8';
+                }}
+              >
+                <LayoutDashboard size={14} />
+              </button>
+
               <button
                 onClick={handleLogout}
-                title="Log out"
+                title="Logout"
                 style={{
                   background: 'transparent',
                   border: '1px solid #16223b',
@@ -536,7 +581,6 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* Sidebar collapse toggle */}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             style={{
@@ -623,7 +667,6 @@ export default function AdminDashboard() {
             </h2>
           </div>
 
-          {/* Top-right: search + mini profile chip */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div
               style={{
@@ -652,7 +695,6 @@ export default function AdminDashboard() {
               />
             </div>
 
-            {/* Profile chip with logout dropdown affordance */}
             <div
               style={{
                 display: 'flex',
@@ -697,8 +739,31 @@ export default function AdminDashboard() {
                 {displayName}
               </span>
               <button
+                onClick={handleGoToDashboard}
+                title="Go to Dashboard"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  borderRadius: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#10b981';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = '#94a3b8';
+                }}
+              >
+                <LayoutDashboard size={13} />
+              </button>
+              <button
                 onClick={handleLogout}
-                title="Log out"
+                title="Logout"
                 style={{
                   background: 'transparent',
                   border: 'none',
@@ -738,6 +803,7 @@ export default function AdminDashboard() {
   );
 }
 
+/* ─── Fallback logo (used if the image fails to load) ─── */
 function CoatOfArmsIcon() {
   return (
     <svg

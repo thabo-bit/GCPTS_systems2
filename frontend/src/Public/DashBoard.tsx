@@ -1,5 +1,6 @@
 // src/Components/Dashboard.tsx
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   FolderKanban,
@@ -16,6 +17,10 @@ import {
   Search,
   ChevronLeft,
   ArrowLeft,
+  Bell,
+  FilePlus,
+  Home,
+  LogOut,
 } from 'lucide-react';
 import coatOfArms from '../assets/coat_of_arms_of_south_africa_1.png';
 import UpcomingProjects from '../Components/UpcomingProjects';
@@ -27,26 +32,67 @@ import ProjectCalendar from '../Components/projectcalenderguide';
 import ReportsModule from '../Components/ReportsModule';
 import CommunityModule from '../Components/CommunityModule';
 import IssuesModule from '../Components/IssuesModule';
+import NotificationBell from '../Components/NotificationBell';
+import NotificationsModule from '../Components/NotificationsModule';
+import CreateUpcomingProject from '../Components/CreateUpcomingProject';
+
+// 👇 Import the public Projects page
+import ProjectsPage from '../Components/ProjectsPage';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [activeNav, setActiveNav] = useState('Dashboard');
 
   const navItems = [
-    { name: 'Dashboard',   icon: LayoutDashboard },
-    { name: 'Projects',    icon: FolderKanban },
-    { name: 'Budgets',     icon: Wallet },
-    { name: 'Contractors', icon: HardHat },
-    { name: 'Issues',      icon: AlertCircle },
-    { name: 'Reports',     icon: FileText },
-    { name: 'Calendar',    icon: Calendar },
+    { name: 'Dashboard',         icon: LayoutDashboard },
+    { name: 'Projects',          icon: FileText },
+    { name: 'Upcoming Project',  icon: FolderKanban },
+    { name: 'Create Proposal',   icon: FilePlus },
+    { name: 'Budgets',           icon: Wallet },
+    { name: 'Contractors',       icon: HardHat },
+    { name: 'Issues',            icon: AlertCircle },
+    { name: 'Reports',           icon: BarChart3 },
+    { name: 'Calendar',          icon: Calendar },
+    { name: 'Notifications',     icon: Bell },
   ];
+
+  // ─── Home: go back to the site landing page ───
+  const handleGoHome = () => {
+    navigate('/');
+  };
+
+  // ─── Logout: clear auth + redirect to login ───
+  const handleLogout = () => {
+    // Clear anything auth-related you store client-side
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    sessionStorage.clear();
+
+    // If your AuthContext exposes a logout(), call it here too:
+    // logout();
+
+    navigate('/login');
+  };
 
   const renderActiveModule = () => {
     switch (activeNav) {
       case 'Dashboard':
         return <DashboardHome />;
+
       case 'Projects':
+        return <ProjectsPage />;
+
+      case 'Upcoming Project':
         return <UpcomingProjects />;
+
+      case 'Create Proposal':
+        return (
+          <CreateUpcomingProject
+            onSuccess={() => setActiveNav('Upcoming Project')}
+            onCancel={() => setActiveNav('Upcoming Project')}
+          />
+        );
+
       case 'Budgets':
         return <BudgetTracking />;
       case 'Contractors':
@@ -61,6 +107,9 @@ export default function Dashboard() {
         return <ReportsModule />;
       case 'Calendar':
         return <ProjectCalendar />;
+      case 'Notifications':
+        return <NotificationsModule />;
+
       default:
         return (
           <div
@@ -178,7 +227,7 @@ export default function Dashboard() {
               flexDirection: 'column',
               gap: '2px',
               overflowY: 'auto',
-              maxHeight: 'calc(100vh - 130px)',
+              maxHeight: 'calc(100vh - 220px)',
             }}
           >
             {navItems.map((item) => {
@@ -231,7 +280,88 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* ─── Bottom action block: Home + Logout + collapse ─── */}
         <div style={{ padding: '12px', borderTop: '1px solid #16223b' }}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px',
+              marginBottom: '8px',
+            }}
+          >
+            {/* Home button */}
+            <button
+              onClick={handleGoHome}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '9px 12px',
+                borderRadius: '8px',
+                border: '1px solid #16223b',
+                backgroundColor: 'transparent',
+                color: '#94a3b8',
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                fontFamily: 'inherit',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
+                e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+                e.currentTarget.style.color = '#10b981';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.borderColor = '#16223b';
+                e.currentTarget.style.color = '#94a3b8';
+              }}
+            >
+              <Home size={14} />
+              Home
+            </button>
+
+            {/* Logout button */}
+            <button
+              onClick={handleLogout}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '9px 12px',
+                borderRadius: '8px',
+                border: '1px solid #16223b',
+                backgroundColor: 'transparent',
+                color: '#94a3b8',
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                fontFamily: 'inherit',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+                e.currentTarget.style.color = '#ef4444';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.borderColor = '#16223b';
+                e.currentTarget.style.color = '#94a3b8';
+              }}
+            >
+              <LogOut size={14} />
+              Logout
+            </button>
+          </div>
+
+          {/* Collapse toggle */}
           <button
             style={{
               background: 'transparent',
@@ -263,6 +393,7 @@ export default function Dashboard() {
             justifyContent: 'space-between',
             padding: '0 24px',
             flexShrink: 0,
+            gap: '16px',
           }}
         >
           <div
@@ -290,6 +421,10 @@ export default function Dashboard() {
                 color: '#0f172a',
               }}
             />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <NotificationBell />
           </div>
         </header>
 

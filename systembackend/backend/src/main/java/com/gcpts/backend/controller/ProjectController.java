@@ -3,6 +3,7 @@ package com.gcpts.backend.controller;
 import com.gcpts.backend.model.Project;
 import com.gcpts.backend.repository.ProjectRepository;
 import com.gcpts.backend.Services.AuditLogService;
+import com.gcpts.backend.Services.NotificationService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +27,9 @@ public class ProjectController {
 
     @Autowired
     private AuditLogService auditLogService;
+
+    @Autowired
+    private NotificationService notificationService;
 
     // ─────────────────────────────────────────────
     // GET all
@@ -84,6 +88,14 @@ public class ProjectController {
 
             Project saved = projectRepository.save(project);
 
+            // ⭐ NOTIFY EVERYONE
+            notificationService.broadcastToAll(
+                    saved.getId(),
+                    "announcement",
+                    "New project: " + saved.getTitle(),
+                    "A new project was added in " + saved.getLocation() + "."
+            );
+
             Map<String, Object> snapshot = new HashMap<>();
             snapshot.put("title", saved.getTitle());
             snapshot.put("department", saved.getDepartment());
@@ -118,7 +130,7 @@ public class ProjectController {
     }
 
     // ─────────────────────────────────────────────
-    // UPDATE (multipart)
+    // UPDATE
     // ─────────────────────────────────────────────
     @PutMapping(value = "/{id}", consumes = "multipart/form-data")
     public ResponseEntity<?> updateProject(
@@ -193,6 +205,15 @@ public class ProjectController {
 
                 Project saved = projectRepository.save(existing);
 
+                // ⭐ NOTIFY EVERYONE
+                notificationService.broadcastToAll(
+                        saved.getId(),
+                        "update",
+                        saved.getTitle() + " was updated",
+                        "Status: " + saved.getStatus()
+                                + " · Progress: " + saved.getOverallProgress() + "%"
+                );
+
                 Map<String, Object> newSnapshot = new HashMap<>();
                 newSnapshot.put("title", saved.getTitle());
                 newSnapshot.put("status", saved.getStatus());
@@ -254,12 +275,21 @@ public class ProjectController {
             snapshot.put("budgetAllocated", p.getBudgetAllocated());
             snapshot.put("referenceNumber", p.getReferenceNumber());
 
+            String title = p.getTitle();
             projectRepository.delete(p);
+
+            // ⭐ NOTIFY EVERYONE
+            notificationService.broadcastToAll(
+                    null,
+                    "announcement",
+                    "Project deleted: " + title,
+                    "This project is no longer available."
+            );
 
             auditLogService.success(
                     "PROJECT_DELETED",
                     "Projects",
-                    p.getTitle(),
+                    title,
                     snapshot,
                     null,
                     true,

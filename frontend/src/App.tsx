@@ -1,5 +1,5 @@
 // src/App.tsx
-import React, { useState } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './Public/Home';
 import LoginPage from './Components/LoginPage';
@@ -11,7 +11,6 @@ import Budget from './Components/BudgetTracking';
 import UpcomingProjects from './Components/UpcomingProjects';
 import ProjectsPage from './Components/ProjectsPage';
 import PageNotFound from './Components/pageNotFound';
-import WelcomePage from './Components/WelcomePage';
 import { useAuth } from './AuthContext';
 import './App.css';
 
@@ -49,24 +48,10 @@ function RequireAuth({
 }
 
 export default function App() {
-  // ─── Welcome overlay — shows on every full page load / refresh.
-  //     Because <App /> remounts on refresh, this state resets to true
-  //     each time. Client-side route changes do NOT remount App, so the
-  //     welcome won't re-trigger during in-app navigation. ───
-  const [showWelcome, setShowWelcome] = useState<boolean>(true);
-
-  const finishWelcome = () => {
-    setShowWelcome(false);
-  };
-
   return (
     <BrowserRouter>
       <div className="app-container">
-        {/* Welcome overlay — sits on top of everything until dismissed */}
-        {showWelcome && <WelcomePage onDone={finishWelcome} />}
-
         <Routes>
-          {/* Public routes */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/Register" element={<RegisterPage />} />

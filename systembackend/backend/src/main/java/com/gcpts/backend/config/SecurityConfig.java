@@ -60,6 +60,13 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/transactions/**").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
 
+                // ─── Notifications (all methods public) ───
+                .requestMatchers("/api/v1/notifications/**").permitAll()
+
+                // ⭐⭐⭐ NEW — Web Push subscription endpoint ⭐⭐⭐
+                .requestMatchers("/api/push/**").permitAll()
+                // ⭐⭐⭐ (PushController under /api/push) ⭐⭐⭐
+
                 // ─── Public POST: citizens report issues ───
                 .requestMatchers(HttpMethod.POST, "/api/issues").permitAll()
 

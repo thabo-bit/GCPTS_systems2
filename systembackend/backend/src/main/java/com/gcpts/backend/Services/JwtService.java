@@ -4,7 +4,6 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -19,12 +18,14 @@ public class JwtService {
     private static final String SECRET =
             "gcpts-super-secret-key-change-me-in-production-2026";
 
-    private static final long EXPIRATION_MS = 1000L * 60 * 60 * 24; // 24 hours
+    private static final long EXPIRATION_MS = 1000L * 60 * 60 * 24;      // 24 hours
+    private static final long RESET_EXPIRATION_MS = 1000L * 60 * 15;     // 15 minutes
 
     private SecretKey getKey() {
         return Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
     }
 
+    // ─── Existing: auth token ───
     public String generateToken(String email, String fullName, String userType) {
         return Jwts.builder()
                 .claims(Map.of(
@@ -36,6 +37,29 @@ public class JwtService {
                 .expiration(new Date(System.currentTimeMillis() + EXPIRATION_MS))
                 .signWith(getKey(), SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    // ⭐ NEW: password reset token (short-lived, purpose-scoped)
+    public String generateResetToken(String email) {
+        return Jwts.builder()
+                .claims(Map.of("purpose", "password-reset"))
+                .subject(email)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + RESET_EXPIRATION_MS))
+                .signWith(getKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    // ⭐ NEW: verify reset token → return email, or null if invalid
+    public String verifyResetToken(String token) {
+        try {
+            Claims claims = parseToken(token);
+            String purpose = claims.get("purpose", String.class);
+            if (!"password-reset".equals(purpose)) return null;
+            return claims.getSubject();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public Claims parseToken(String token) {

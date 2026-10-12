@@ -4,6 +4,7 @@ import com.gcpts.backend.model.Transaction;
 import com.gcpts.backend.repository.ProjectRepository;
 import com.gcpts.backend.repository.TransactionRepository;
 import com.gcpts.backend.Services.AuditLogService;
+import com.gcpts.backend.Services.NotificationService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -26,7 +27,9 @@ public class TransactionController {
     @Autowired
     private AuditLogService auditLogService;
 
-    // ⭐ Recalculate the parent project's budget_used from its transaction ledger
+    @Autowired
+    private NotificationService notificationService;
+
     private void syncProjectBudgetUsed(Long projectId) {
         if (projectId == null) return;
         try {
@@ -47,17 +50,11 @@ public class TransactionController {
         }
     }
 
-    // ─────────────────────────────────────────────
-    // GET by project
-    // ─────────────────────────────────────────────
     @GetMapping
     public List<Transaction> getByProject(@RequestParam Long projectId) {
         return repository.findByProjectIdOrderByDateAsc(projectId);
     }
 
-    // ─────────────────────────────────────────────
-    // GET one
-    // ─────────────────────────────────────────────
     @GetMapping("/{id}")
     public ResponseEntity<Transaction> getById(@PathVariable Long id) {
         return repository.findById(id)
@@ -65,9 +62,6 @@ public class TransactionController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // ─────────────────────────────────────────────
-    // CREATE
-    // ─────────────────────────────────────────────
     @PostMapping
     public ResponseEntity<?> create(
             @RequestBody Transaction tx,
@@ -81,6 +75,14 @@ public class TransactionController {
             Transaction saved = repository.save(tx);
 
             syncProjectBudgetUsed(saved.getProjectId());
+
+            // ⭐ NOTIFY EVERYONE
+            notificationService.broadcastToAll(
+                    saved.getProjectId(),
+                    "budget",
+                    "New transaction: " + saved.getDescription(),
+                    saved.getType() + " of R " + saved.getAmount()
+            );
 
             Map<String, Object> snapshot = new HashMap<>();
             snapshot.put("projectId", saved.getProjectId());
@@ -110,9 +112,6 @@ public class TransactionController {
         }
     }
 
-    // ─────────────────────────────────────────────
-    // UPDATE
-    // ─────────────────────────────────────────────
     @PutMapping("/{id}")
     public ResponseEntity<?> update(
             @PathVariable Long id,
@@ -142,6 +141,14 @@ public class TransactionController {
                 Transaction saved = repository.save(existing);
 
                 syncProjectBudgetUsed(saved.getProjectId());
+
+                // ⭐ NOTIFY EVERYONE
+                notificationService.broadcastToAll(
+                        saved.getProjectId(),
+                        "budget",
+                        "Transaction updated: " + saved.getDescription(),
+                        "New amount: R " + saved.getAmount()
+                );
 
                 Map<String, Object> newSnapshot = new HashMap<>();
                 newSnapshot.put("description", saved.getDescription());
@@ -187,9 +194,6 @@ public class TransactionController {
         });
     }
 
-    // ─────────────────────────────────────────────
-    // DELETE
-    // ─────────────────────────────────────────────
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(
             @PathVariable Long id,
@@ -208,13 +212,22 @@ public class TransactionController {
             snapshot.put("status", tx.getStatus());
             snapshot.put("projectId", tx.getProjectId());
 
+            String desc = tx.getDescription();
             repository.delete(tx);
 
             syncProjectBudgetUsed(projectId);
 
+            // ⭐ NOTIFY EVERYONE
+            notificationService.broadcastToAll(
+                    projectId,
+                    "budget",
+                    "Transaction reversed: " + desc,
+                    "This transaction has been removed."
+            );
+
             auditLogService.log(
                     "TRANSACTION_DELETED", "critical", "Transactions",
-                    tx.getDescription(), snapshot, null,
+                    desc, snapshot, null,
                     "SUCCESS", null,
                     userName, "Administrator", null,
                     true, request

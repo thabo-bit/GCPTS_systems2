@@ -8,8 +8,8 @@ import org.springframework.web.multipart.MultipartFile;
 import com.gcpts.backend.model.Issue;
 import com.gcpts.backend.repository.IssueRepository;
 import com.gcpts.backend.Services.ImageUploadService;
+import com.gcpts.backend.Services.NotificationService;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -22,6 +22,9 @@ public class IssueController {
 
     @Autowired
     private ImageUploadService imageUploadService;
+
+    @Autowired
+    private NotificationService notificationService;
 
     // ─── CREATE (public — citizens report) ───
     @PostMapping(consumes = "multipart/form-data")
@@ -50,7 +53,6 @@ public class IssueController {
                         : "Anonymous"
         );
 
-        // default triage state
         issue.setStatus("Reported");
 
         if (image != null && !image.isEmpty()) {
@@ -61,7 +63,17 @@ public class IssueController {
             issue.setImageUrl(imageUrl);
         }
 
-        return issueRepository.save(issue);
+        Issue saved = issueRepository.save(issue);
+
+        // ⭐ NOTIFY EVERYONE
+        notificationService.broadcastToAll(
+                saved.getProjectId(),
+                "announcement",
+                "New issue reported: " + saved.getTitle(),
+                "Location: " + saved.getLocation() + " — " + saved.getCategory()
+        );
+
+        return saved;
     }
 
     // ─── LIST (public — optional projectId filter) ───
@@ -83,7 +95,7 @@ public class IssueController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // ─── UPDATE STATUS (admin, generic) ───
+    // ─── UPDATE STATUS ───
     @PatchMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(
             @PathVariable Long id,
@@ -97,41 +109,74 @@ public class IssueController {
         return issueRepository.findById(id).map(issue -> {
             issue.setStatus(newStatus);
             Issue saved = issueRepository.save(issue);
+
+            // ⭐ NOTIFY EVERYONE
+            notificationService.broadcastToAll(
+                    saved.getProjectId(),
+                    "update",
+                    "Issue update: " + saved.getTitle(),
+                    "Status changed to " + newStatus
+            );
+
             return ResponseEntity.ok(saved);
         }).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // ─── DEDICATED: RESOLVE ───
+    // ─── RESOLVE ───
     @PutMapping("/{id}/resolve")
     public ResponseEntity<?> resolve(@PathVariable Long id) {
         return issueRepository.findById(id).map(issue -> {
             issue.setStatus("Resolved");
             Issue saved = issueRepository.save(issue);
+
+            notificationService.broadcastToAll(
+                    saved.getProjectId(),
+                    "completion",
+                    "Issue resolved: " + saved.getTitle(),
+                    "This issue has been marked as resolved."
+            );
+
             return ResponseEntity.ok(saved);
         }).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // ─── DEDICATED: MARK IN PROGRESS ───
+    // ─── IN PROGRESS ───
     @PutMapping("/{id}/in-progress")
     public ResponseEntity<?> markInProgress(@PathVariable Long id) {
         return issueRepository.findById(id).map(issue -> {
             issue.setStatus("In Progress");
             Issue saved = issueRepository.save(issue);
+
+            notificationService.broadcastToAll(
+                    saved.getProjectId(),
+                    "update",
+                    "Issue in progress: " + saved.getTitle(),
+                    "Our team is working on this."
+            );
+
             return ResponseEntity.ok(saved);
         }).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // ─── DEDICATED: REOPEN ───
+    // ─── REOPEN ───
     @PutMapping("/{id}/reopen")
     public ResponseEntity<?> reopen(@PathVariable Long id) {
         return issueRepository.findById(id).map(issue -> {
             issue.setStatus("Reported");
             Issue saved = issueRepository.save(issue);
+
+            notificationService.broadcastToAll(
+                    saved.getProjectId(),
+                    "update",
+                    "Issue reopened: " + saved.getTitle(),
+                    "Status set back to Reported."
+            );
+
             return ResponseEntity.ok(saved);
         }).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // ─── UPDATE ASSIGNMENT (admin) ───
+    // ─── ASSIGN ───
     @PatchMapping("/{id}/assign")
     public ResponseEntity<?> assign(
             @PathVariable Long id,
@@ -141,11 +186,19 @@ public class IssueController {
         return issueRepository.findById(id).map(issue -> {
             issue.setAssignedTo(assignedTo);
             Issue saved = issueRepository.save(issue);
+
+            notificationService.broadcastToAll(
+                    saved.getProjectId(),
+                    "update",
+                    "Issue assigned: " + saved.getTitle(),
+                    "Assigned to " + assignedTo
+            );
+
             return ResponseEntity.ok(saved);
         }).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // ─── UPDATE ADMIN NOTE (admin) ───
+    // ─── NOTE ───
     @PatchMapping("/{id}/note")
     public ResponseEntity<?> updateNote(
             @PathVariable Long id,
@@ -155,11 +208,19 @@ public class IssueController {
         return issueRepository.findById(id).map(issue -> {
             issue.setAdminNote(note);
             Issue saved = issueRepository.save(issue);
+
+            notificationService.broadcastToAll(
+                    saved.getProjectId(),
+                    "update",
+                    "Update on issue: " + saved.getTitle(),
+                    note
+            );
+
             return ResponseEntity.ok(saved);
         }).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // ─── DELETE (admin) ───
+    // ─── DELETE ───
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id) {
         if (!issueRepository.existsById(id)) {

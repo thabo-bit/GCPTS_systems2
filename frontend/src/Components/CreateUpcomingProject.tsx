@@ -1,8 +1,8 @@
-// components/CreateUpcomingProject.tsx
+// src/Components/CreateUpcomingProject.tsx
 import React, { useState } from 'react';
 import {
   Save, X, ArrowLeft,
-  HeartHandshake, Landmark, Calendar,
+  Landmark,
   FileText, Image as ImageIcon
 } from 'lucide-react';
 import axios from 'axios';
@@ -14,21 +14,51 @@ interface CreateUpcomingProjectProps {
   onCancel?: () => void;
 }
 
-const ngoStageOptions = [
-  { num: 1, title: 'Compliance' },
-  { num: 2, title: 'Proposal' },
-  { num: 3, title: 'Submission' },
-  { num: 4, title: 'Evaluation' },
-  { num: 5, title: 'Approval' },
+// ─── DEMO / AUTO-GENERATED HELPERS ──────────────────────────────────
+
+// Random integer between min and max (inclusive)
+const randInt = (min: number, max: number) =>
+  Math.floor(Math.random() * (max - min + 1)) + min;
+
+// Pick a random element from an array
+const pick = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+
+// Auto-generate a government reference number like: NCG-COGHSTA-2026-089
+const generateGovRef = (): string => {
+  const year = new Date().getFullYear();
+  const seq = String(randInt(100, 999));
+  return `NCG-COGHSTA-${year}-${seq}`;
+};
+
+// Demo allocating ministries
+const ALLOCATING_MINISTRIES = [
+  'MEC for Cooperative Governance',
+  'MEC for Public Works & Infrastructure',
+  'MEC for Human Settlements',
+  'MEC for Transport, Safety & Liaison',
+  'MEC for Finance, Economic Development & Tourism',
 ];
 
-const STATUS_OPTIONS = [
-  'Waiting for Approval',
-  'Approved',
-  'Rejected',
-  'In Progress',
-  'Completed',
-];
+// Demo durations
+const DURATIONS = ['3 Months', '6 Months', '8 Months', '12 Months', '18 Months', '24 Months'];
+
+// Demo community impact priorities
+const COMMUNITY_IMPACTS = ['High Priority', 'Medium Priority', 'Low Priority'];
+
+// Auto-generate a scheduled start date (30–180 days from today)
+const generateScheduledStart = (): string => {
+  const d = new Date();
+  d.setDate(d.getDate() + randInt(30, 180));
+  return d.toISOString().split('T')[0]; // YYYY-MM-DD
+};
+
+// Auto-generate an estimated budget (R 500k – R 15M, rounded to nearest 10k)
+const generateEstimatedBudget = (): number => {
+  const raw = randInt(500_000, 15_000_000);
+  return Math.round(raw / 10_000) * 10_000;
+};
+
+// ────────────────────────────────────────────────────────────────────
 
 export default function CreateUpcomingProject({ onSuccess, onCancel }: CreateUpcomingProjectProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,24 +66,13 @@ export default function CreateUpcomingProject({ onSuccess, onCancel }: CreateUpc
 
   const [formData, setFormData] = useState({
     title: '',
-    category: 'Government Project',
+    category: 'Government Project', // locked
     department: '',
     ward: '',
     location: '',
-    duration: '',
-    estimatedBudget: '',
-    scheduledStart: '',
-    tenderStatus: '',
     description: '',
-    communityImpact: 'Medium Priority',
-    status: 'Waiting for Approval',
+    status: 'Waiting for Approval', // locked
     issuer: '',
-    govRef: '',
-    allocatingMinistry: '',
-    ngoPartner: '',
-    ngoRole: '',
-    currentStage: 1,
-    stageDescription: '',
     tags: '',
     imageFile: null as File | null,
     imagePreview: '',
@@ -86,25 +105,23 @@ export default function CreateUpcomingProject({ onSuccess, onCancel }: CreateUpc
 
       const payload = {
         title: formData.title,
-        category: formData.category,
+        category: 'Government Project',
         department: formData.department,
         ward: formData.ward,
         location: formData.location,
-        duration: formData.duration,
-        estimatedBudget: Number(formData.estimatedBudget),
-        scheduledStart: formData.scheduledStart,
-        tenderStatus: formData.tenderStatus,
         description: formData.description,
-        communityImpact: formData.communityImpact,
-        status: formData.status,
         issuer: formData.issuer,
-        govRef: formData.govRef,
-        allocatingMinistry: formData.allocatingMinistry,
-        ngoPartner: formData.ngoPartner,
-        ngoRole: formData.ngoRole,
-        currentStage: Number(formData.currentStage),
-        stageDescription: formData.stageDescription,
         tags: formData.tags.split(',').map((t) => t.trim()).filter(Boolean),
+
+        // 🤖 Auto-generated — never shown to the user
+        duration: pick(DURATIONS),
+        scheduledStart: generateScheduledStart(),
+        estimatedBudget: generateEstimatedBudget(),
+        communityImpact: pick(COMMUNITY_IMPACTS),
+        tenderStatus: 'Pending Municipal Council Approval',
+        status: 'Waiting for Approval',
+        govRef: generateGovRef(),
+        allocatingMinistry: pick(ALLOCATING_MINISTRIES),
       };
 
       data.append(
@@ -131,8 +148,6 @@ export default function CreateUpcomingProject({ onSuccess, onCancel }: CreateUpc
       setIsSubmitting(false);
     }
   };
-
-  const isGov = formData.category === 'Government Project';
 
   return (
     <>
@@ -229,25 +244,6 @@ export default function CreateUpcomingProject({ onSuccess, onCancel }: CreateUpc
         }
         .cup-field textarea { resize: vertical; min-height: 90px; }
 
-        .cup-radio-group {
-          display: flex; gap: 10px; flex-wrap: wrap;
-        }
-        .cup-radio-card {
-          flex: 1; min-width: 160px;
-          display: flex; align-items: center; gap: 10px;
-          padding: 12px 14px; border-radius: 12px;
-          border: 2px solid #e2e8f0; background: #fff;
-          cursor: pointer; transition: all 0.2s ease;
-          font-size: 13px; font-weight: 500;
-        }
-        .cup-radio-card:hover { border-color: #cbd5e1; }
-        .cup-radio-card.active.gov {
-          border-color: #7f9dc4; background: #e5eef8; color: #4f6888;
-        }
-        .cup-radio-card.active.ngo {
-          border-color: #8fb89c; background: #e8f4ee; color: #4a7a5c;
-        }
-
         .cup-image-preview {
           width: 100%; height: 180px;
           border: 2px dashed #cbd5e1;
@@ -261,22 +257,6 @@ export default function CreateUpcomingProject({ onSuccess, onCancel }: CreateUpc
         }
         .cup-image-preview:hover { border-color: #10b981; color: #10b981; }
         .cup-image-preview img { width: 100%; height: 100%; object-fit: cover; }
-
-        .cup-stage-picker {
-          display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
-        }
-        .cup-stage-btn {
-          padding: 10px 6px; border-radius: 10px;
-          border: 1px solid #e2e8f0; background: #fff;
-          font-size: 11px; font-weight: 600; color: #94a3b8;
-          cursor: pointer; text-align: center;
-          font-family: inherit; transition: all 0.2s ease;
-        }
-        .cup-stage-btn:hover { border-color: #cbd5e1; color: #475569; }
-        .cup-stage-btn.active {
-          background: #8fb89c; color: #fff; border-color: #8fb89c;
-          box-shadow: 0 4px 12px -4px rgba(143,184,156,0.5);
-        }
 
         .cup-toast {
           position: fixed; top: 24px; left: 50%;
@@ -295,7 +275,6 @@ export default function CreateUpcomingProject({ onSuccess, onCancel }: CreateUpc
 
         @media (max-width: 640px) {
           .cup-grid { grid-template-columns: 1fr; }
-          .cup-stage-picker { grid-template-columns: repeat(2, 1fr); }
         }
       `}</style>
 
@@ -307,7 +286,7 @@ export default function CreateUpcomingProject({ onSuccess, onCancel }: CreateUpc
             </button>
             <h1 className="cup-title">Add Upcoming Project</h1>
             <p className="cup-subtitle">
-              Publish a new initiative to the public pipeline. It appears instantly in the Upcoming Projects view.
+              Publish a new government initiative to the public pipeline. It appears instantly in the Upcoming Projects view.
             </p>
           </div>
           <div className="cup-actions">
@@ -347,48 +326,19 @@ export default function CreateUpcomingProject({ onSuccess, onCancel }: CreateUpc
                 />
               </div>
 
-              <div className="cup-field cup-grid-full">
-                <label>Project Type *</label>
-                <div className="cup-radio-group">
-                  <div
-                    className={`cup-radio-card ${isGov ? 'active gov' : ''}`}
-                    onClick={() =>
-                      setFormData({ ...formData, category: 'Government Project' })
-                    }
-                  >
-                    <Landmark size={16} /> Government Project
-                  </div>
-                  <div
-                    className={`cup-radio-card ${!isGov ? 'active ngo' : ''}`}
-                    onClick={() =>
-                      setFormData({
-                        ...formData,
-                        category: 'NGO Initiative',
-                        department: '', // clear department on switch
-                      })
-                    }
-                  >
-                    <HeartHandshake size={16} /> NGO Initiative
-                  </div>
-                </div>
+              <div className="cup-field">
+                <label>Department *</label>
+                <input
+                  type="text"
+                  name="department"
+                  value={formData.department}
+                  onChange={handleInputChange}
+                  placeholder="e.g., Infrastructure & Engineering"
+                  required
+                />
               </div>
 
-              {/* Department — only shown for Government Projects */}
-              {isGov && (
-                <div className="cup-field">
-                  <label>Department *</label>
-                  <input
-                    type="text"
-                    name="department"
-                    value={formData.department}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Infrastructure & Engineering"
-                    required={isGov}
-                  />
-                </div>
-              )}
-
-              <div className={`cup-field ${!isGov ? 'cup-grid-full' : ''}`}>
+              <div className="cup-field">
                 <label>Ward *</label>
                 <input
                   type="text"
@@ -436,197 +386,28 @@ export default function CreateUpcomingProject({ onSuccess, onCancel }: CreateUpc
             </div>
           </div>
 
-          {/* CARD 2: Timeline & Budget */}
+          {/* CARD 2 (Timeline & Budget) — REMOVED — auto-generated */}
+
+          {/* CARD 3: Issuing Authority */}
           <div className="cup-card">
             <div className="cup-card-header">
-              <h3 className="cup-card-title"><Calendar size={15} /> Timeline & Budget</h3>
-              <p className="cup-card-sub">Schedule and financial scope.</p>
-            </div>
-
-            <div className="cup-grid">
-              <div className="cup-field">
-                <label>Duration *</label>
-                <input
-                  type="text"
-                  name="duration"
-                  value={formData.duration}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 8 Months"
-                  required
-                />
-              </div>
-
-              <div className="cup-field">
-                <label>Scheduled Start *</label>
-                <input
-                  type="date"
-                  name="scheduledStart"
-                  value={formData.scheduledStart}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-
-              <div className="cup-field">
-                <label>Estimated Budget (ZAR) *</label>
-                <input
-                  type="number"
-                  name="estimatedBudget"
-                  value={formData.estimatedBudget}
-                  onChange={handleInputChange}
-                  placeholder="4500000"
-                  required
-                />
-              </div>
-
-              <div className="cup-field">
-                <label>Community Impact *</label>
-                <select
-                  name="communityImpact"
-                  value={formData.communityImpact}
-                  onChange={handleInputChange}
-                >
-                  <option value="High Priority">High Priority</option>
-                  <option value="Medium Priority">Medium Priority</option>
-                  <option value="Low Priority">Low Priority</option>
-                </select>
-              </div>
-
-              <div className="cup-field">
-                <label>Status *</label>
-                <select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleInputChange}
-                >
-                  {STATUS_OPTIONS.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="cup-field cup-grid-full">
-                <label>Status / Stage Note *</label>
-                <input
-                  type="text"
-                  name="tenderStatus"
-                  value={formData.tenderStatus}
-                  onChange={handleInputChange}
-                  placeholder="e.g., Pending Municipal Council Approval"
-                  required
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* CARD 3: Issuer / Sponsor */}
-          <div className="cup-card">
-            <div className="cup-card-header">
-              <h3 className="cup-card-title">
-                {isGov ? <Landmark size={15} /> : <HeartHandshake size={15} />}
-                {isGov ? 'Issuing Authority' : 'NGO Partner Details'}
-              </h3>
-              <p className="cup-card-sub">
-                {isGov
-                  ? 'Which government department is driving this project.'
-                  : 'Which NGO is facilitating this initiative.'}
-              </p>
+              <h3 className="cup-card-title"><Landmark size={15} /> Issuing Authority</h3>
+              <p className="cup-card-sub">Which government department is driving this project.</p>
             </div>
 
             <div className="cup-grid">
               <div className="cup-field cup-grid-full">
-                <label>{isGov ? 'Issuing Department / Ministry *' : 'NGO Name *'}</label>
+                <label>Issuing Community *</label>
                 <input
                   type="text"
                   name="issuer"
                   value={formData.issuer}
                   onChange={handleInputChange}
-                  placeholder={
-                    isGov ? 'e.g., Northern Cape COGHSTA' : 'e.g., NC Youth Digital Empowerment Trust'
-                  }
+                  placeholder="e.g., Northern Cape COGHSTA"
                   required
                 />
               </div>
-
-              {isGov ? (
-                <>
-                  <div className="cup-field">
-                    <label>Government Ref #</label>
-                    <input
-                      type="text"
-                      name="govRef"
-                      value={formData.govRef}
-                      onChange={handleInputChange}
-                      placeholder="e.g., NCG-COGHSTA-2026-089"
-                    />
-                  </div>
-                  <div className="cup-field">
-                    <label>Allocating Ministry</label>
-                    <input
-                      type="text"
-                      name="allocatingMinistry"
-                      value={formData.allocatingMinistry}
-                      onChange={handleInputChange}
-                      placeholder="e.g., MEC for Cooperative Governance"
-                    />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="cup-field">
-                    <label>NGO Partner</label>
-                    <input
-                      type="text"
-                      name="ngoPartner"
-                      value={formData.ngoPartner}
-                      onChange={handleInputChange}
-                      placeholder="e.g., NC Youth Digital Trust"
-                    />
-                  </div>
-                  <div className="cup-field cup-grid-full">
-                    <label>NGO Role</label>
-                    <input
-                      type="text"
-                      name="ngoRole"
-                      value={formData.ngoRole}
-                      onChange={handleInputChange}
-                      placeholder="e.g., Facilitating workshops and mentorship placement."
-                    />
-                  </div>
-                </>
-              )}
             </div>
-
-            {/* NGO Stage Picker */}
-            {!isGov && (
-              <div style={{ marginTop: 20 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: 10 }}>
-                  Current Approval Stage
-                </label>
-                <div className="cup-stage-picker">
-                  {ngoStageOptions.map((s) => (
-                    <button
-                      key={s.num}
-                      type="button"
-                      className={`cup-stage-btn ${formData.currentStage === s.num ? 'active' : ''}`}
-                      onClick={() => setFormData({ ...formData, currentStage: s.num })}
-                    >
-                      {s.num}. {s.title}
-                    </button>
-                  ))}
-                </div>
-                <div className="cup-field" style={{ marginTop: 12 }}>
-                  <label>Stage Description</label>
-                  <input
-                    type="text"
-                    name="stageDescription"
-                    value={formData.stageDescription}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Apply formally with business plans and detailed budgets."
-                  />
-                </div>
-              </div>
-            )}
           </div>
 
           {/* CARD 4: Cover Image */}

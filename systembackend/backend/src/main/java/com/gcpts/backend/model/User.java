@@ -25,6 +25,16 @@ public class User {
     @Column(nullable = false)
     private String userType = "user"; // "admin" | "user"
 
+    // ⭐ Web Push fields (NEW)
+    @Column(name = "push_endpoint", length = 500)
+    private String pushEndpoint;
+
+    @Column(name = "push_p256dh", length = 255)
+    private String pushP256dh;
+
+    @Column(name = "push_auth", length = 255)
+    private String pushAuth;
+
     public User() {}
 
     // 4-arg constructor (kept for backwards compatibility — defaults to "user")
@@ -63,4 +73,14 @@ public class User {
 
     public String getUserType() { return userType; }
     public void setUserType(String userType) { this.userType = userType; }
+
+    // ⭐ Push accessors (NEW)
+    public String getPushEndpoint() { return pushEndpoint; }
+    public void setPushEndpoint(String pushEndpoint) { this.pushEndpoint = pushEndpoint; }
+
+    public String getPushP256dh() { return pushP256dh; }
+    public void setPushP256dh(String pushP256dh) { this.pushP256dh = pushP256dh; }
+
+    public String getPushAuth() { return pushAuth; }
+    public void setPushAuth(String pushAuth) { this.pushAuth = pushAuth; }
 }
